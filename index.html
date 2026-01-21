@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoSQL Blog System</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f4f4f9; }
+        h1 { color: #333; text-align: center; }
+        .create-post { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        input, textarea { width: 100%; margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;}
+        button { background-color: #28a745; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; }
+        button:hover { background-color: #218838; }
+        .post { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #007bff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .post h2 { margin-top: 0; color: #007bff; }
+        .meta { font-size: 0.85em; color: #666; margin-bottom: 10px; }
+        .content { line-height: 1.6; margin-bottom: 15px; }
+        .comments-section { margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
+        .comment { background: #f9f9f9; padding: 8px; margin-bottom: 5px; border-radius: 4px; font-size: 0.9em; }
+        .add-comment-box { display: flex; gap: 5px; margin-top: 10px; }
+        .add-comment-box input { margin-bottom: 0; font-size: 0.9em; }
+        .btn-small { padding: 5px 10px; font-size: 0.8em; background-color: #007bff; }
+    </style>
+</head>
+<body>
+
+    <h1>My Python + NoSQL Blog</h1>
+
+    <div class="create-post">
+        <h3>Add New Post</h3>
+        <input type="text" id="title" placeholder="Title">
+        <input type="text" id="author" placeholder="Author Name">
+        <textarea id="content" rows="3" placeholder="Write your content here..."></textarea>
+        <button onclick="createPost()">Publish Post</button>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 20px;">
+        <label for="sort-select">Sort by: </label>
+        <select id="sort-select" onchange="loadFeed()">
+            <option value="date_desc">Date (Newest First)</option>
+            <option value="date_asc">Date (Oldest First)</option>
+            <option value="title_asc">Title (A - Z)</option>
+            <option value="title_desc">Title (Z - A)</option>
+        </select>
+    </div>
+
+    <div id="blog-feed">
+        <p style="text-align:center;">Loading feed...</p>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        
+        // OPTIMIZED: Single function to get everything
+        async function loadFeed() {
+            const sortValue = document.getElementById('sort-select').value;
+            
+            // 1. Single Fetch Request
+            const response = await fetch(`${API_URL}/feed?sort_option=${sortValue}`);
+            const data = await response.json();
+            
+            // data.posts = The list of posts
+            // data.stats = The dictionary of counts {"DevUser": 5}
+
+            const feed = document.getElementById('blog-feed');
+            feed.innerHTML = ''; 
+
+            data.posts.forEach(post => {
+                const postDiv = document.createElement('div');
+                postDiv.className = 'post';
+                
+                let commentsHtml = '';
+                if (post.comments && post.comments.length > 0) {
+                    post.comments.forEach(c => {
+                        commentsHtml += `<div class="comment"><strong>${c.author}:</strong> ${c.content}</div>`;
+                    });
+                } else {
+                    commentsHtml = '<div style="color:#ccc; font-size:0.8em;">No comments yet.</div>';
+                }
+
+                // Get Count directly from the stats dictionary
+                const count = data.stats[post.author] || 0;
+
+                postDiv.innerHTML = `
+                    <h2>${post.title}</h2>
+                    <div class="meta">
+                        By <strong>${post.author}</strong> 
+                        <span style="color: #28a745; font-weight: bold; margin-left: 5px;">(${count} posts)</span>
+                        on ${new Date(post.date).toLocaleDateString()}
+                    </div>
+                    <div class="content">${post.content}</div>
+                    
+                    <div class="comments-section">
+                        <h4>Comments</h4>
+                        ${commentsHtml}
+                        <div class="add-comment-box">
+                            <input type="text" id="c-auth-${post.id}" placeholder="Name" style="width:30%">
+                            <input type="text" id="c-text-${post.id}" placeholder="Add a comment...">
+                            <button class="btn-small" onclick="submitComment('${post.id}')">Reply</button>
+                        </div>
+                    </div>
+                `;
+                feed.appendChild(postDiv);
+            });
+        }
+
+        async function submitComment(postId) {
+            const author = document.getElementById(`c-auth-${postId}`).value;
+            const content = document.getElementById(`c-text-${postId}`).value;
+            if(!author || !content) return alert("Please fill in name and comment");
+
+            await fetch(`${API_URL}/posts/${postId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ author, content })
+            });
+            loadFeed();
+        }
+
+        async function createPost() {
+            const title = document.getElementById('title').value;
+            const author = document.getElementById('author').value;
+            const content = document.getElementById('content').value;
+            if(!title || !content) return alert("Please fill in title and content");
+
+            await fetch(`${API_URL}/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, author, content })
+            });
+
+            document.getElementById('title').value = '';
+            document.getElementById('content').value = '';
+            loadFeed();
+        }
+
+        loadFeed();
+    </script>
+</body>
+</html>
