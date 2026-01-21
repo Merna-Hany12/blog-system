@@ -8,11 +8,9 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId  
 from fastapi import Query
 from typing import List, Dict, Optional
-# TODO: Import your database driver/modules here 
-# (e.g. from pymongo import MongoClient, from bson.objectid import ObjectId)
+
 MONGO_URI = "mongodb://localhost:27017/"
 # --- Configuration ---
-# TODO: Define your Database Connection String and Variables here (URI, DB Name)
 DB_name='my_blog_db'
 app = FastAPI()
 
@@ -56,10 +54,7 @@ class FeedResponse(BaseModel):
 # --- Dummy Data Generator ---
 def seed_dummy_data():
     """Checks if DB is empty and populates it with dummy data."""
-    # TODO: 
-    # 1. Check if the database collection is empty (count documents).
-    # 2. If it is 0, define a list of dictionary dummy posts.
-    # 3. Insert the list into the database.
+
     if posts_col.count_documents({})==0:
         dummy_posts = [
             {
@@ -146,10 +141,7 @@ def get_feed(sort_option: str = Query("date_desc", enum=["date_desc", "date_asc"
 def add_comment(post_id: str, comment: Comment):
     """Add a comment to a specific post using MongoDB $push"""
     
-    # TODO:
-    # 1. Convert the 'post_id' string to an ObjectId.
-    # 2. Update the document with that ID.
-    # 3. Use the $push operator to add 'comment.dict()' to the 'comments' array.
+
     posts_col.update_one({'_id': ObjectId(post_id)},{'$push':{'comments':comment.dict()}})
     
     return {"message": "Comment added successfully"}
@@ -160,9 +152,7 @@ def create_post(post: Post):
     new_post = post.dict()
     new_post["date"] = datetime.datetime.now().isoformat()
     
-    # TODO:
-    # 1. Insert 'new_post' into your collection.
-    # 2. Capture the result to get the new ID.
+
     
     result=posts_col.insert_one(new_post)
     new_total = posts_col.count_documents({"author": post.author})
